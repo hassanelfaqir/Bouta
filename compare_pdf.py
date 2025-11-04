@@ -1,67 +1,43 @@
 import streamlit as st
+import pdfplumber
+import re
 import pandas as pd
-import tabula
-import fitz  # PyMuPDF
 
-st.set_page_config(page_title="مقارنة الأكواد بين ملفين PDF", page_icon="🧾")
+st.set_page_config(page_title="🧾 مقارنة الأكواد بين ملفين PDF", page_icon="📄")
 
 st.markdown("<h1 style='text-align:center;'>🧾 مقارنة الأكواد بين ملفي الفواتير (FCT / FL)</h1>", unsafe_allow_html=True)
 
 pdf1 = st.file_uploader("📁 الملف الأول (فاتورة FCT)", type="pdf")
 pdf2 = st.file_uploader("📁 الملف الثاني (فاتورة FL)", type="pdf")
 
-# -------------------------------
-# دالة باش نلقط الأكواد من النص مباشرة
-# -------------------------------
-import re
-
-def extract_codes_from_text(pdf_file):
+# ------------------------------------------------------
+# دالة لاستخراج الأكواد من النص داخل PDF
+# ------------------------------------------------------
+def extract_codes(pdf_file):
     codes = set()
-    with fitz.open(stream=pdf_file.read(), filetype="pdf") as doc:
-        for page in doc:
-            text = page.get_text("text")
-            # نلقط الأكواد اللي فيهم "OSC-" أو "ECHANGE-OSC-" مثلا
-            found = re.findall(r"(ECHANGE-?OSC-[0-9\-]+|OSC-[0-9\-]+)", text)
+    if not pdf_file:
+        return codes
+
+    with pdfplumber.open(pdf_file) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if not text:
+                continue
+            # نلقط الأكواد اللي فيها OSC- أو ECHANGE-OSC-
+            found = re.findall(r"(ECHANGE-?OSC-[0-9\-]+|OSC-[0-9\-]+)", text, flags=re.IGNORECASE)
             for f in found:
                 codes.add(f.strip().upper())
     return codes
 
 
 if pdf1 and pdf2:
-    try:
-        with st.spinner("⏳ جاري قراءة الملفات..."):
+    with st.spinner("⏳ جاري استخراج الأكواد من الملفات..."):
+        codes_fct = extract_codes(pdf1)
+        codes_fl = extract_codes(pdf2)
 
-            # المحاولة الأولى: نستعمل Tabula
-            try:
-                df1_list = tabula.read_pdf(pdf1, pages='all', lattice=True)
-                df2_list = tabula.read_pdf(pdf2, pages='all', lattice=True)
-                df1 = pd.concat(df1_list, ignore_index=True)
-                df2 = pd.concat(df2_list, ignore_index=True)
-
-                def detect_code_column(df):
-                    for col in df.columns:
-                        if "code" in str(col).lower():
-                            return col
-                    return None
-
-                col_fct = detect_code_column(df1)
-                col_fl = detect_code_column(df2)
-
-                if not col_fct or not col_fl:
-                    raise ValueError("عمود الكود مش لاقيه")
-
-                codes_fct = set(df1[col_fct].dropna().astype(str).str.strip().str.upper())
-                codes_fl = set(df2[col_fl].dropna().astype(str).str.strip().str.upper())
-
-            except Exception:
-                # المحاولة الثانية: نستعمل PyMuPDF لاستخراج النصوص
-                st.warning("⚠️ فشل استخراج الجداول بـ Tabula، نحاول استخراج الأكواد من النص...")
-                pdf1.seek(0)
-                pdf2.seek(0)
-                codes_fct = extract_codes_from_text(pdf1)
-                pdf2.seek(0)
-                codes_fl = extract_codes_from_text(pdf2)
-
+    if not codes_fct or not codes_fl:
+        st.error("⚠️ ما قدرش يلقى الأكواد فواحد من الملفات. تأكد أن الملفات فيها الأكواد (مثلاً OSC-...).")
+    else:
         # المقارنة
         missing_in_fct = sorted(codes_fl - codes_fct)
         missing_in_fl = sorted(codes_fct - codes_fl)
@@ -81,9 +57,10 @@ if pdf1 and pdf2:
             st.info("📗 جميع الأكواد من FCT موجودة في FL.")
 
         # تحميل النتيجة
+        max_len = max(len(missing_in_fct), len(missing_in_fl))
         df_result = pd.DataFrame({
-            "Code ناقص في FCT": missing_in_fct + [""] * (max(len(missing_in_fl), len(missing_in_fct)) - len(missing_in_fct)),
-            "Code ناقص في FL": missing_in_fl + [""] * (max(len(missing_in_fl), len(missing_in_fct)) - len(missing_in_fl))
+            "Code ناقص في FCT": missing_in_fct + [""] * (max_len - len(missing_in_fct)),
+            "Code ناقص في FL": missing_in_fl + [""] * (max_len - len(missing_in_fl))
         })
 
         st.download_button(
@@ -92,6 +69,3 @@ if pdf1 and pdf2:
             file_name="codes_comparison_result.csv",
             mime="text/csv"
         )
-
-    except Exception as e:
-        st.error(f"❌ وقع خطأ أثناء القراءة: {e}")
