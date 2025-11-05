@@ -264,7 +264,12 @@ def extract_ville_corrected(line, all_lines, current_index):
         'Sidi bennour': ['sidi bennour'],
         'Dar bouazza': ['dar bouazza'],
         'Tamaris': ['tamaris'],
-        'Lahraouiyine': ['lahraouiyine']
+        'Lahraouiyine': ['lahraouiyine'],
+         'Rabat': ['rabat', 'الرباط'],
+        'Marrakech': ['marrakech', 'مراكش'],
+        'Fes': ['fes', 'fez', 'فاس'],
+        'Tanger': ['tanger', 'طنجة'],
+        'Agadir': ['agadir', 'أكادير']
     }
     
     line_lower = line.lower()
@@ -356,7 +361,21 @@ def normalize_city_name_final(city_name):
         'sidi bennour': 'Sidi bennour',
         'dar bouazza': 'Dar bouazza',
         'tamaris': 'Tamaris',
-        'lahraouiyine': 'Lahraouiyine'
+        'lahraouiyine': 'Lahraouiyine',
+        'الدار البيضاء': 'Casablanca',
+        'دار البيضاء': 'Casablanca',
+        'casa': 'Casablanca',
+        'الرباط': 'Rabat',
+        'rabat': 'Rabat',
+        'مراكش': 'Marrakech',
+        'marrakech': 'Marrakech',
+        'فاس': 'Fes',
+        'fes': 'Fes',
+        'fez': 'Fes',
+        'طنجة': 'Tanger',
+        'tanger': 'Tanger',
+        'أكادير': 'Agadir',
+        'agadir': 'Agadir',
     }
     
     return city_mapping.get(city_lower, city_name)
@@ -445,7 +464,7 @@ if pdf1 and pdf2:
     with col1:
         if data_fct:
             st.markdown('<div class="success-box">', unsafe_allow_html=True)
-            st.success(f"✅ الملف الأول (FCT): {len(data_fct)} سطر")
+            st.success(f"✅ الملف الأول (Daryexpress): {len(data_fct)} سطر")
             st.markdown('</div>', unsafe_allow_html=True)
             
             st.markdown('<div style="color: #2E86AB; font-weight: 600; margin: 1rem 0;">عينة من البيانات المستخرجة:</div>', unsafe_allow_html=True)
@@ -467,7 +486,7 @@ if pdf1 and pdf2:
     with col2:
         if data_fl:
             st.markdown('<div class="success-box">', unsafe_allow_html=True)
-            st.success(f"✅ الملف الثاني (FL): {len(data_fl)} سطر")
+            st.success(f"✅ الملف الثاني (OSCARIO): {len(data_fl)} سطر")
             st.markdown('</div>', unsafe_allow_html=True)
             
             st.markdown('<div style="color: #2E86AB; font-weight: 600; margin: 1rem 0;">عينة من البيانات المستخرجة:</div>', unsafe_allow_html=True)
@@ -532,7 +551,7 @@ if pdf1 and pdf2:
         # عرض النتائج
         if missing_in_fct:
             st.markdown('<div class="error-box">', unsafe_allow_html=True)
-            st.error(f"❌ الأكواد الناقصة في ملف FCT ({len(missing_in_fct)})")
+            st.error(f"❌ الأكواد الناقصة في ملف Daryexpress ({len(missing_in_fct)})")
             st.markdown('</div>', unsafe_allow_html=True)
             
             missing_data = []
@@ -658,7 +677,7 @@ if pdf1 and pdf2:
                 if code in data_fl:
                     result_data.append({
                         'الكود': code,
-                        'النوع': 'ناقص في FCT',
+                        'النوع': 'ناقص في Daryexpress',
                         'مدينة FCT': '',
                         'مدينة FL': data_fl[code]['Ville'],
                         'المبلغ FCT': '',
@@ -671,7 +690,7 @@ if pdf1 and pdf2:
                 if code in data_fct:
                     result_data.append({
                         'الكود': code,
-                        'النوع': 'ناقص في FL',
+                        'النوع': 'ناقص في OSCARIO',
                         'مدينة FCT': data_fct[code]['Ville'],
                         'مدينة FL': '',
                         'المبلغ FCT': data_fct[code]['CRBT'],
